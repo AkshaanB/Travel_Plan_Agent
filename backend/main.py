@@ -115,7 +115,6 @@ async def chat_endpoint(request: ChatRequest, fastapi_req: Request):
         }
 
     logger.info(f"Request processed successfully. Classified intent: {classified_intent}")
-    logger.info(f"Response: {response_text}")
     return {
         "status": "success",
         "user_query": request.text,

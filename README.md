@@ -6,10 +6,10 @@ A powerful, multi-agent AI travel assistant built with **FastAPI**, **LangGraph*
 
 - **Multi-Agent Orchestration**: Uses `LangGraph` to route user queries between specialized agents (Travel Planner, Recommender, and QA).
 - **Local Intelligence**: Powered by `llama3.2:3b` via **Ollama** for fast, private, and local processing.
-- **Intent Classification**: Automatically identifies if a user wants to plan a trip, get recommendations, or ask general travel questions.
 - **MCP Tool Integration**: A standalone MCP server providing mock tools for real-time (simulated) flight, hotel, and activity data.
-- **Hybrid Guardrails**: A two-tier safety system combining rule-based Regex and LLM-based auditing to prevent prompt injection and keep the agent on-topic.
-- **Premium Frontend**: A modern, responsive React + Vite interface with rich aesthetics and smooth micro-animations.
+- **Robust Logging**: Comprehensive system logging saved to `logs/app.log` for debugging and auditing.
+- **Hybrid Guardrails**: A two-tier safety system combining rule-based Regex and LLM-based auditing to keep the agent on-topic.
+- **Minimal MVP Frontend**: A clean, straightforward React + Vite interface focused on core chat functionality.
 
 ---
 
@@ -28,11 +28,16 @@ A powerful, multi-agent AI travel assistant built with **FastAPI**, **LangGraph*
 Travel_Plan_Agent/
 ├── backend/                # FastAPI Application
 │   ├── graph/              # LangGraph nodes and workflow
-│   ├── mcp/                # MCP Client implementation
+│   ├── mcp_client/         # MCP Client implementation
 │   ├── mcp_server/         # Standalone MCP Tool Server (Mock APIs)
 │   ├── utils/              # Guardrails and helpers
 │   └── main.py             # API Entry point
 ├── frontend/               # React Vite Application
+│   ├── src/
+│   │   ├── Chat.jsx        # Core Chat Component
+│   │   └── index.css       # Minimal MVP Styles
+├── logs/                   # System-wide logs
+│   └── app.log             # Application log file
 ├── docs/                   # Implementation plans and documentation
 └── README.md
 ```
@@ -48,43 +53,45 @@ Travel_Plan_Agent/
   ollama pull llama3.2:3b
   ```
 
-### 2. Setup the MCP Server
-The MCP server provides the tools for the agent to "call".
-```powershell
-cd backend/mcp_server
-pip install -r requirements.txt
-python server.py
-```
-
-### 3. Setup the Backend API
+### 2. Setup and Run the Backend
+The backend manages the AI orchestration and connects to the MCP tools.
 ```powershell
 cd backend
-pip install -r requirements.txt
-python main.py
-```
-The API will be available at `http://localhost:8000`.
+# Recommended: Create a virtual environment
+python -m venv .venv
+.venv\Scripts\Activate.ps1
 
-### 4. Setup the Frontend
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the API server on port 8001
+uvicorn main:app --reload --host 0.0.0.0 --port 8001
+```
+The API will be available at `http://localhost:8001`.
+
+### 3. Setup and Run the Frontend
+The frontend provides the chat interface.
 ```powershell
 cd frontend
 npm install
 npm run dev
 ```
+The frontend will typically be available at `http://localhost:5173`. It is pre-configured to communicate with the backend on port 8001.
 
 ---
 
 ## 🛡️ Guardrails in Action
 The agent is protected against:
 - **Prompt Injection**: "Ignore previous instructions..."
-- **Off-topic Queries**: "How do I write a Python script?" (Filtered to stay on travel)
-- **Sensitive Data Leakage**: Credit cards, API keys, etc.
+- **Off-topic Queries**: Filters out non-travel related topics.
+- **Sensitive Data Leakage**: Prevents accidental disclosure of private information.
 
 ---
 
 ## 🧪 Testing the API
-You can test the multi-agent intent classification using `curl` or PowerShell:
+You can test the chat endpoint using PowerShell:
 ```powershell
-Invoke-RestMethod -Method Post -Uri "http://localhost:8000/chat" -ContentType "application/json" -Body '{"text": "Plan a 3-day trip to Tokyo"}'
+Invoke-RestMethod -Method Post -Uri "http://localhost:8001/chat" -ContentType "application/json" -Body '{"text": "Plan a 3-day trip to Tokyo"}'
 ```
 
 ---
