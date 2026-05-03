@@ -1,6 +1,7 @@
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_ollama import ChatOllama
 from pydantic import BaseModel, Field
+from langgraph.prebuilt import create_react_agent
 
 # Initialize the LLM
 llm = ChatOllama(model="llama3.2:3b", temperature=0)
@@ -68,11 +69,12 @@ def qa_node(state: dict):
     
     return {"messages": [response]}
 
-def recommend_node(state: dict):
+async def recommend_node(state: dict):
     """
     Agent node for travel recommendations.
     """
     messages = state.get("messages", [])
+    tools = state.get("tools", [])
     
     system_prompt = (
         "You are a passionate travel recommender. Your goal is to suggest incredible "
@@ -84,31 +86,38 @@ def recommend_node(state: dict):
         "4. Be vivid, enthusiastic, and helpful."
     )
     
-    response = llm.invoke([
-        SystemMessage(content=system_prompt)
-    ] + messages)
-    
-    return {"messages": [response]}
+    if tools:
+        agent = create_react_agent(llm, tools, prompt=system_prompt)
+        result = await agent.ainvoke({"messages": messages})
+        new_messages = result["messages"][len(messages):]
+        return {"messages": new_messages}
+    else:
+        response = await llm.ainvoke([SystemMessage(content=system_prompt)] + messages)
+        return {"messages": [response]}
 
-def travel_plan_node(state: dict):
+async def travel_plan_node(state: dict):
     """
     Agent node for detailed travel planning. 
     In a full implementation, this node would be bound to MCP tools.
     """
     messages = state.get("messages", [])
+    tools = state.get("tools", [])
     
     system_prompt = (
         "You are a professional travel planner. Your goal is to create detailed, "
         "personalized itineraries that include flights, hotels, and daily activities.\n\n"
         "Guidelines:\n"
-        "1. Be specific about locations, times, and costs (use mock data if tools are unavailable).\n"
+        "1. Be specific about locations, times, and costs.\n"
         "2. Structure the itinerary day-by-day.\n"
         "3. Always maintain a professional and enthusiastic tone.\n"
         "4. If the user asks for a specific trip, provide a full breakdown."
     )
     
-    response = llm.invoke([
-        SystemMessage(content=system_prompt)
-    ] + messages)
-    
-    return {"messages": [response]}
+    if tools:
+        agent = create_react_agent(llm, tools, prompt=system_prompt)
+        result = await agent.ainvoke({"messages": messages})
+        new_messages = result["messages"][len(messages):]
+        return {"messages": new_messages}
+    else:
+        response = await llm.ainvoke([SystemMessage(content=system_prompt)] + messages)
+        return {"messages": [response]}

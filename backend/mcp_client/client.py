@@ -1,10 +1,11 @@
 import asyncio
 import os
 import sys
-from typing import List, Optional
+from typing import List, Optional, Any
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-from langchain_core.tools import Tool
+from langchain_core.tools import StructuredTool
+from pydantic import create_model
 
 class MCPClient:
     def __init__(self, server_path: Optional[str] = None):
@@ -44,7 +45,7 @@ class MCPClient:
         if hasattr(self, "_client_context") and self._client_context:
             await self._client_context.__aexit__(exc_type, exc_val, exc_tb)
 
-    async def get_langchain_tools(self) -> List[Tool]:
+    async def get_langchain_tools(self) -> List[StructuredTool]:
         """
         Discovers tools from the MCP server and wraps them as LangChain Tool objects.
         """
@@ -64,12 +65,24 @@ class MCPClient:
                     return result.content[0].text
                 return call_mcp_tool
 
+            # Create a dynamic Pydantic model for the tool's schema
+            properties = mcp_tool.inputSchema.get("properties", {}) if mcp_tool.inputSchema else {}
+            required_fields = mcp_tool.inputSchema.get("required", []) if mcp_tool.inputSchema else []
+            
+            fields = {}
+            for prop_name, prop_info in properties.items():
+                is_required = prop_name in required_fields
+                fields[prop_name] = (Any, ... if is_required else None)
+                
+            dynamic_schema = create_model(f"{mcp_tool.name}Schema", **fields)
+
             langchain_tools.append(
-                Tool(
+                StructuredTool(
                     name=mcp_tool.name,
                     description=mcp_tool.description,
                     func=None, # LangChain will use the coroutine for async execution
-                    coroutine=make_call(mcp_tool.name)
+                    coroutine=make_call(mcp_tool.name),
+                    args_schema=dynamic_schema
                 )
             )
             

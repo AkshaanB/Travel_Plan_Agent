@@ -1,4 +1,4 @@
-from typing import TypedDict, Annotated, Sequence
+from typing import TypedDict, Annotated, Sequence, Any
 import operator
 from langchain_core.messages import BaseMessage
 from langgraph.graph import StateGraph, END
@@ -12,6 +12,8 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], operator.add]
     # The classified intent of the user
     intent: str
+    # Tools available to the agent for this turn
+    tools: Sequence[Any]
 
 def route_intent(state: AgentState):
     """
